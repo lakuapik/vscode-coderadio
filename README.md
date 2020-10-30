@@ -1,5 +1,9 @@
 # Code Radio (vscode-extension)
 
+
+[![Visual Studio Marketplace](https://vsmarketplacebadge.apphb.com/version/lakuapik.coderadio.svg?tyle=flat-square)](https://marketplace.visualstudio.com/items?itemName=lakuapik.coderadio)
+[![Installs](https://vsmarketplacebadge.apphb.com/installs-short/lakuapik.coderadio.svg?tyle=flat-square)](https://marketplace.visualstudio.com/items?itemName=lakuapik.coderadio)
+
 Listen 24/7 music designed for coding, in your favorite editor: vscode.
 
 ## Why
