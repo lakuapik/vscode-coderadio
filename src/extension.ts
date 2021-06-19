@@ -19,7 +19,7 @@ async function hasConnection()
 function getPlayer()
 {
   let vlc = "/usr/bin/vlc"; // gnu/linux or mac?
-  if (osPlatform().includes('win')) {vlc = "C:\\Program Files\\VLC\\vlc.exe";}
+  if (osPlatform().includes('win')) {vlc = "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe";}
   return vscode.workspace.getConfiguration("coderadio").get("vlc_path") || vlc;
 }
 
@@ -34,8 +34,13 @@ function updateSidebar(text: string, tooltip: string, command: string)
 async function startTerminal()
 {
   terminal?.dispose(); // if there is a running instance
-  terminal = vscode.window.createTerminal({ hideFromUser: true });
+  terminal = vscode.window.createTerminal({ 
+    shellPath: "C:\\Windows\\System32\\cmd.exe", // ensures that the default Windows terminal will open 
+    name: "coderadio",
+    hideFromUser: true
+  });
   terminal.sendText(`"${getPlayer()}" ${radio} --intf dummy`);
+  setTimeout(() => terminal.dispose(), 3000); // it's not necessary to keep the terminal open in windows
 }
 
 function stopTerminal()
@@ -44,7 +49,10 @@ function stopTerminal()
   // for some reason, dispose in windows doesnt kill its child processes
   // so we manually kill vlc with taskkill command
   if (osPlatform().includes('win')) {
-    const t = vscode.window.createTerminal({ hideFromUser: true });
+    const t = vscode.window.createTerminal({ 
+      shellPath: "C:\\Windows\\System32\\cmd.exe", // ensures that the default Windows terminal will open
+      hideFromUser: false
+    });
     t.sendText('taskkill /im "vlc.exe" /f');
     setTimeout(() => t.dispose(), 3000); // proximity until taskkill complete
   }
