@@ -19,8 +19,9 @@ async function hasConnection()
 function getPlayer()
 {
   let vlc = "/usr/bin/vlc"; // gnu/linux or mac?
+  let vlcwin = "C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe";
   if (osPlatform().includes('win')) {vlc = "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe";}
-  return vscode.workspace.getConfiguration("coderadio").get("vlc_path") || vlc;
+  return vscode.workspace.getConfiguration("coderadio").get("vlc_path") || vlcwin || vlc;
 }
 
 function updateSidebar(text: string, tooltip: string, command: string)
