@@ -4,8 +4,9 @@ import * as vscode from "vscode";
 
 let statusBar: vscode.StatusBarItem;
 let volumeValue: vscode.StatusBarItem;
+let task: vscode.Task;
 let terminal: vscode.Terminal;
-let volume: number = 70
+let volume: number = 20
 let playingState = false;
 let platform: string = osPlatform()
 
@@ -37,39 +38,45 @@ function updateSidebar(text: string, tooltip: string, command: string)
 
 async function startTerminal()
 {
-  terminal?.dispose(); // if there is a running instance
-  if (platform.includes('win')) {
-    terminal = vscode.window.createTerminal({
-      shellPath: "C:\\Windows\\System32\\cmd.exe", // ensures that the default Windows terminal will open 
-      name: "coderadio",
-      hideFromUser: true
-    });
-  setTimeout(() => terminal.dispose(), 3000); // it's not necessary to keep the terminal open in windows
+  // terminal?.dispose(); // if there is a running instance
+  // if (platform.includes('win')) {
+  //   terminal = vscode.window.createTerminal({
+  //     shellPath: "C:\\Windows\\System32\\cmd.exe", // ensures that the default Windows terminal will open 
+  //     name: "coderadio",
+  //     hideFromUser: true
+  //   });
+  //   setTimeout(() => terminal.dispose(), 3000); // it's not necessary to keep the terminal open in windows
 
-  } else {
-    terminal = vscode.window.createTerminal({
-      shellPath: "/bin/bash",
-      name: "coderadio",
-      hideFromUser: true
-    })
-  }
-  terminal.sendText(`"${getPlayer()}" ${radio} --intf dummy --gain ${volume / 100} &`);
+  // } else {
+  //   terminal = vscode.window.createTerminal({
+  //     shellPath: "/bin/bash",
+  //     name: "coderadio",
+  //     hideFromUser: true
+  //   })
+  // }
+  // terminal.sendText(`"${getPlayer()}" ${radio} --intf dummy --gain ${volume / 100} &`);
+  task = new vscode.Task("player","Global", "CodeRadio", "Package Manager",new vscode.ShellExecution(`"${getPlayer()}" ${radio} --intf dummy --gain ${volume / 100} &`));
+    vscode.tasks.executeTask(task)
+
 
 }
 
 function stopTerminal()
 {
-  terminal?.dispose();
-  // for some reason, dispose in windows doesnt kill its child processes
-  // so we manually kill vlc with taskkill command
-  if (platform.includes('win')) {
-    const t = vscode.window.createTerminal({
-      shellPath: "C:\\Windows\\System32\\cmd.exe", // ensures that the default Windows terminal will open
-      hideFromUser: false
-    });
-    t.sendText('taskkill /im "vlc.exe" /f');
-    setTimeout(() => t.dispose(), 3000); // proximity until taskkill complete
-  }
+  vscode
+  // terminal?.dispose();
+  // // for some reason, dispose in windows doesnt kill its child processes
+  // // so we manually kill vlc with taskkill command
+  // if (platform.includes('win')) {
+  //   const t = vscode.window.createTerminal({
+  //     shellPath: "C:\\Windows\\System32\\cmd.exe", // ensures that the default Windows terminal will open
+  //     hideFromUser: false
+  //   });
+  //   t.sendText('taskkill /im "vlc.exe" /f');
+  //   setTimeout(() => t.dispose(), 3000); // proximity until taskkill complete
+  // }
+  
+
 }
 
 async function playStream()
@@ -129,7 +136,6 @@ async function stopStream() {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-
 
   statusBar = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Left,
