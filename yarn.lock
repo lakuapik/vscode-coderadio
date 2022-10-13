@@ -935,6 +935,11 @@ v8-compile-cache@^2.0.3:
   resolved "https://registry.yarnpkg.com/v8-compile-cache/-/v8-compile-cache-2.1.1.tgz#54bc3cdd43317bca91e35dcaf305b1a7237de745"
   integrity sha512-8OQ9CL+VWyt3JStj7HX7/ciTL2V3Rl1Wf5OL+SNTm0yK1KvtReVulksyeRnCANHHuUxHlQig+JJDlUhBt1NQDQ==
 
+vlc-player@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/vlc-player/-/vlc-player-2.0.0.tgz#0e2a9051b6327fd30088322303c65266881ddca4"
+  integrity sha512-RDnQDKeawHFqpKAvPbXW+YqmfRIjldxjl+r9SK3wFVAR/msKqQ0niL3vo5H4fhray5h+KKfo6gwGxADa+7EQbA==
+
 which@^2.0.1:
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/which/-/which-2.0.2.tgz#7c6a8dd0a636a0327e10b59c9286eee93f3f51b1"

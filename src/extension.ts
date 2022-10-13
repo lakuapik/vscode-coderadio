@@ -1,85 +1,90 @@
 import { platform as osPlatform } from 'os';
 import { get as fetch } from 'https';
 import * as vscode from "vscode";
+import { ChildProcess, ChildProcessWithoutNullStreams, spawn, SpawnOptions } from 'child_process';
 
+import * as fs from 'fs';
+import * as path from 'path';
+
+const isWin = (process.platform == 'win32');
 let statusBar: vscode.StatusBarItem;
 let volumeValue: vscode.StatusBarItem;
+
+let GlobalState: vscode.Memento;
 let task: vscode.Task;
 let terminal: vscode.Terminal;
 let volume: number = 20
 let playingState = false;
 let platform: string = osPlatform()
-
+let tmpPlayer: ChildProcess;
 const radio = "https://coderadio-admin.freecodecamp.org/radio/8010/radio.mp3";
 const portal = "https://detectportal.firefox.com/success.txt";
 
-async function hasConnection()
-{
+async function hasConnection() {
   return new Promise<boolean>((resolve, reject) => {
     const req = fetch(portal, (res) => resolve(res.statusCode === 200));
     req.on('error', () => resolve(false));
   });
 }
 
-function getPlayer()
-{
-  let vlc = "/usr/bin/vlc"; // gnu/linux or mac?
-  if (platform.includes('win')) { vlc = "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe"; }
-  return vscode.workspace.getConfiguration("coderadio").get("vlc_path") || vlc;
+function getPlayer(): ChildProcess {
+  let p = GlobalState.get("player") as ChildProcess
+  if(p && p.connected && !p.killed) return p as ChildProcess;
+  
+  else{
+    if(p && !p.connected && !p.killed){
+      p.kill("SIGKILL")
+    }
+    let vlc_path = [];
+
+    //we can do better, but this is kindof okay
+  
+    if (isWin && process.env['ProgramFiles'])
+      vlc_path.push(path.join(process.env['ProgramFiles'], 'VideoLAN/VLC/vlc.exe'));
+  
+    if (isWin && process.env['ProgramFiles(x86)'])
+      vlc_path.push(path.join(process.env['ProgramFiles(x86)'], 'VideoLAN/VLC/vlc.exe'));
+  
+    if (!isWin)
+      vlc_path.push("/usr/bin/cvlc");
+  
+    let vlc = vlc_path.find(bin => fs.existsSync(bin));
+  
+    if (!vlc)
+      throw `Cannot find vlc path`;
+  
+    let player = spawn.bind(null, vlc).apply(null, [[radio, "--gain", (volume / 100).toString(), "--volume-step", (volume / 128).toString()], {}]);
+
+    GlobalState.update("player", player)
+    return player
+  }
+  
 }
 
-function updateSidebar(text: string, tooltip: string, command: string)
-{
+function updateSidebar(text: string, tooltip: string, command: string) {
   statusBar.text = text;
   statusBar.tooltip = tooltip;
   statusBar.command = command;
   statusBar.show();
 }
 
-async function startTerminal()
-{
-  terminal?.dispose(); // if there is a running instance
-  if (platform.includes('win')) {
-    terminal = vscode.window.createTerminal({
-      shellPath: "C:\\Windows\\System32\\cmd.exe", // ensures that the default Windows terminal will open 
-      name: "coderadio",
-      hideFromUser: true
-    });
-    setTimeout(() => terminal.dispose(), 3000); // it's not necessary to keep the terminal open in windows
-
-  } else {
-    terminal = vscode.window.createTerminal({
-      shellPath: "/bin/bash",
-      name: "coderadio",
-      hideFromUser: true
-    })
-  }
-  terminal.sendText(`"${getPlayer()}" ${radio} --intf dummy --no-volume-save --gain ${volume / 100} --volume-step ${volume / 128}`);
- 
-
-
-}
-
-function stopTerminal()
-{
-   
-  terminal?.dispose();
-  // for some reason, dispose in windows doesnt kill its child processes
-  // so we manually kill vlc with taskkill command
-  if (platform.includes('win')) {
-    const t = vscode.window.createTerminal({
-      shellPath: "C:\\Windows\\System32\\cmd.exe", // ensures that the default Windows terminal will open
-      hideFromUser: false
-    });
-    t.sendText('taskkill /im "vlc.exe" /f');
-    setTimeout(() => t.dispose(), 3000); // proximity until taskkill complete
-  }
+async function startTerminal() {
+  tmpPlayer = getPlayer()
+  
   
 
 }
 
-async function playStream()
-{
+function stopTerminal() {
+ 
+  tmpPlayer?.kill("SIGKILL")
+ 
+  GlobalState.update("player", tmpPlayer)
+
+
+}
+
+async function playStream() {
   if (!(await hasConnection())) {
     vscode.window.showInformationMessage("Can't play, no internet connection.");
     return;
@@ -136,6 +141,7 @@ async function stopStream() {
 
 export function activate(context: vscode.ExtensionContext) {
 
+
   statusBar = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Left,
     Number.MIN_SAFE_INTEGER
@@ -149,7 +155,6 @@ export function activate(context: vscode.ExtensionContext) {
 
   radioName.text = "Code Radio"
 
-  let { volumeUp, volumeDown } = initVolumeButtons()
 
 
   let subscriptions = [
@@ -157,17 +162,28 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("coderadio.stop", stopStream),
     vscode.commands.registerCommand("coderadio.volumedown", downVolume),
     vscode.commands.registerCommand("coderadio.volumeup", upVolume),
-    radioName,
-    statusBar,
-    volumeUp,
-    volumeDown
 
 
   ];
   context.subscriptions.push(...subscriptions);
 
+
   radioName.show()
-  stopStream();
+
+  //get global state player
+  GlobalState = context.globalState
+  let p = GlobalState.get("player")
+  if (p) {
+  
+    volume = GlobalState.get("playerVolume") as number
+    updateSidebar("◼", "◼ Stop playing", "coderadio.stop");
+
+  }{
+    updateSidebar("▶", "▶ Start playing", "coderadio.play");
+
+  }
+  let { volumeUp, volumeDown } = initVolumeButtons()
+
   volumeUp.show()
 
   volumeDown.show()
@@ -201,7 +217,7 @@ function initVolumeButtons() {
 
 function refreshVolumeText() {
   volumeValue.text = volume + "% 🕨"
-
+  GlobalState?.update("playerVolume", volume)
 }
 
 export function deactivate() {
