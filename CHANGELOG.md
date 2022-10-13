@@ -8,6 +8,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ### Added
 - Volume controls added
 - Extension layout changed
+- Global state management and UI scope execution
 
 ## [v0.0.1] - 2020-10-30
 

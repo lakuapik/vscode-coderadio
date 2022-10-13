@@ -12,7 +12,7 @@ let volumeValue: vscode.StatusBarItem;
 
 let GlobalState: vscode.Memento;
 let task: vscode.Task;
-let terminal: vscode.Terminal; 
+let terminal: vscode.Terminal;
 let playingState = false;
 let platform: string = osPlatform()
 let tmpPlayer: ChildProcess;
@@ -26,43 +26,48 @@ async function hasConnection() {
   });
 }
 
+function killProcess(pid:number) {
+  if (!isWin) spawn("kill", ['-9', pid.toString()])
+  else spawn("taskkill", ['/PID', pid.toString(), '/F'])
+}
+
 function getPlayer(): ChildProcess {
   let p = GlobalState.get("player") as ChildProcess
-  if(p && p.connected && !p.killed) return p as ChildProcess;
-  
-  else{
-    if(p && !p.connected && !p.killed){
-      if(!isWin)spawn("kill",['-9',p.pid.toString()])
+  if (p && p.connected && !p.killed) return p as ChildProcess;
+
+  else {
+    if (p && !p.connected && !p.killed) {
+      killProcess(p.pid)
     }
     let vlc_path = [];
 
     //we can do better, but this is kindof okay
-  
+
     if (isWin && process.env['ProgramFiles'])
       vlc_path.push(path.join(process.env['ProgramFiles'], 'VideoLAN/VLC/vlc.exe'));
-  
+
     if (isWin && process.env['ProgramFiles(x86)'])
       vlc_path.push(path.join(process.env['ProgramFiles(x86)'], 'VideoLAN/VLC/vlc.exe'));
-  
+
     if (!isWin)
       vlc_path.push("/usr/bin/cvlc");
-  
+
     let vlc = vlc_path.find(bin => fs.existsSync(bin));
-  
+
     if (!vlc)
       throw `Cannot find vlc path`;
-    let volume =  GlobalState.get("playerVolume")
-    if(!volume ) {
-      volume = 20 
+    let volume = GlobalState.get("playerVolume")
+    if (!volume) {
+      volume = 20
 
       GlobalState?.update("playerVolume", volume)
     }
-    let player = spawn.bind(null, vlc).apply(null, [[radio, "--gain", (volume  as number/ 100).toString(), "--volume-step", (volume as number / 128).toString()], {}]);
-    
+    let player = spawn.bind(null, vlc).apply(null, [[radio, "--gain", (volume as number / 100).toString(), "--volume-step", (volume as number / 128).toString()], {}]);
+
     GlobalState.update("player", player)
     return player
   }
-  
+
 }
 
 function updateSidebar(text: string, tooltip: string, command: string) {
@@ -74,20 +79,21 @@ function updateSidebar(text: string, tooltip: string, command: string) {
 
 async function startTerminal() {
   tmpPlayer = getPlayer()
-  
-  
+
+
 
 }
 
 function stopTerminal() {
-  
+
   let p = GlobalState.get("player") as ChildProcess
-  if(tmpPlayer)    tmpPlayer.kill("SIGKILL")
-   if(p && !p.connected && !p.killed){
-      if(!isWin)spawn("kill",['-9',p.pid.toString()])
-      tmpPlayer=p
-    }
-    
+  if (tmpPlayer) tmpPlayer.kill("SIGKILL")
+  else if (p && !p.connected && !p.killed) {
+    killProcess(p.pid)
+
+    tmpPlayer = p
+  }
+
   GlobalState.update("player", tmpPlayer)
 
 
@@ -111,8 +117,8 @@ async function restartStream() {
   }
   startTerminal();
 }
-async function upVolume() { 
-  let volume =  GlobalState.get("playerVolume") as number
+async function upVolume() {
+  let volume = GlobalState.get("playerVolume") as number
   if (volume < 100) {
     volume += 10;
     GlobalState?.update("playerVolume", volume)
@@ -127,8 +133,8 @@ async function upVolume() {
 
 }
 async function downVolume() {
-  let volume =  GlobalState.get("playerVolume") as number
- 
+  let volume = GlobalState.get("playerVolume") as number
+
   if (volume > 0) {
     volume -= 10;
     GlobalState?.update("playerVolume", volume)
@@ -187,22 +193,22 @@ export function activate(context: vscode.ExtensionContext) {
   //get global state player
   GlobalState = context.globalState
   let p = GlobalState.get("player") as ChildProcess
-  if (p ) {
-  
+  if (p) {
+
     let volume = GlobalState.get("playerVolume") as number
-    if(!volume){
+    if (!volume) {
       GlobalState?.update("playerVolume", 20)
 
     }
-    if(!p.killed){
+    if (!p.killed) {
       updateSidebar("◼", "◼ Stop playing", "coderadio.stop");
 
-    }else{
+    } else {
       updateSidebar("▶", "▶ Start playing", "coderadio.play");
 
     }
 
-  }else{
+  } else {
     updateSidebar("▶", "▶ Start playing", "coderadio.play");
 
   }
@@ -240,7 +246,7 @@ function initVolumeButtons() {
 }
 
 function refreshVolumeText() {
-  let volume = GlobalState.get("playerVolume") 
+  let volume = GlobalState.get("playerVolume")
   volumeValue.text = volume + "% 🕨"
 }
 
