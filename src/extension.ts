@@ -75,7 +75,7 @@ function getPlayer(): ChildProcess {
 
       GlobalState?.update("playerVolume", volume)
     }
-    let args = [radio, "--gain", (volume as number / 100).toString(), "--volume-step", (volume as number / 128).toString()]
+    let args = [radio, "--gain", (volume as number / 100).toString(), "--volume-step", ( 128).toString()]
     if (vlc_path_str) {
       args.push("--intf")
       args.push("dummy")
