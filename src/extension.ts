@@ -26,7 +26,7 @@ async function hasConnection() {
   });
 }
 
-function killProcess(pid:number) {
+function killProcess(pid: number) {
   if (!isWin) spawn("kill", ['-9', pid.toString()])
   else spawn("taskkill", ['/PID', pid.toString(), '/F'])
 }
@@ -40,22 +40,23 @@ function getPlayer(): ChildProcess {
       killProcess(p.pid)
     }
     let vlc_path_str = vscode.workspace.getConfiguration("coderadio").get("vlc_path") as string
-    let vlc_path=[]
-    if(!vlc_path_str){
-      vlc_path =[]
-    //we can do better, but this is kindof okay
+    let vlc_path = []
+    if (!vlc_path_str) {
+      vlc_path = []
+      //we can do better, but this is kindof okay
 
-    if (isWin && process.env['ProgramFiles'])
-      vlc_path.push(path.join(process.env['ProgramFiles'], 'VideoLAN/VLC/vlc.exe'));
+      if (isWin && process.env['ProgramFiles'])
+        vlc_path.push(path.join(process.env['ProgramFiles'], 'VideoLAN/VLC/vlc.exe'));
 
-    if (isWin && process.env['ProgramFiles(x86)'])
-      vlc_path.push(path.join(process.env['ProgramFiles(x86)'], 'VideoLAN/VLC/vlc.exe'));
+      if (isWin && process.env['ProgramFiles(x86)'])
+        vlc_path.push(path.join(process.env['ProgramFiles(x86)'], 'VideoLAN/VLC/vlc.exe'));
 
-    if (!isWin)
-      vlc_path.push("/usr/bin/cvlc");
-  }else{
-    vlc_path=[vlc_path_str]
-  }
+      if (!isWin)
+        vlc_path.push("/usr/bin/cvlc");
+    } else {
+      vlc_path = [vlc_path_str]
+
+    }
 
     let vlc = vlc_path.find(bin => fs.existsSync(bin));
 
@@ -67,7 +68,12 @@ function getPlayer(): ChildProcess {
 
       GlobalState?.update("playerVolume", volume)
     }
-    let player = spawn.bind(null, vlc).apply(null, [[radio, "--gain", (volume as number / 100).toString(), "--volume-step", (volume as number / 128).toString()], {}]);
+    let args = [radio, "--gain", (volume as number / 100).toString(), "--volume-step", (volume as number / 128).toString()]
+    if (vlc_path_str) {
+      args.push("--intf")
+      args.push("dummy")
+    }
+    let player = spawn.bind(null, vlc).apply(null, [args, {}]);
 
     GlobalState.update("player", player)
     return player
@@ -125,26 +131,37 @@ async function restartStream() {
 async function upVolume() {
   let volume = GlobalState.get("playerVolume") as number
   if (volume < 100) {
+    if (volume < 10) {
+      volume = 0;
+
+    }
     volume += 10;
     GlobalState?.update("playerVolume", volume)
 
     refreshVolumeText()
 
   }
+
+  GlobalState?.update("playerVolume", volume)
+
   if (playingState) {
     restartStream()
   }
-
 
 }
 async function downVolume() {
   let volume = GlobalState.get("playerVolume") as number
 
   if (volume > 0) {
-    volume -= 10;
-    GlobalState?.update("playerVolume", volume)
 
-    refreshVolumeText()
+
+    if (volume <= 10) {
+      volume -= 1;
+
+    } else {
+      volume -= 10;
+    }
+
 
   }
   if (playingState) {
@@ -152,6 +169,10 @@ async function downVolume() {
 
 
   }
+  GlobalState?.update("playerVolume", volume)
+
+  refreshVolumeText()
+
 
 }
 
