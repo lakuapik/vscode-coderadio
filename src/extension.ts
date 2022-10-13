@@ -63,7 +63,7 @@ function getPlayer(): ChildProcess {
     if (!vlc)
       throw `Cannot find vlc path`;
     let volume = GlobalState.get("playerVolume")
-    if (!volume) {
+    if (volume===undefined) {
       volume = 20
 
       GlobalState?.update("playerVolume", volume)
@@ -126,23 +126,25 @@ async function restartStream() {
     vscode.window.showInformationMessage("Can't play, no internet connection.");
     return;
   }
-  startTerminal();
+  let volume = GlobalState.get("playerVolume") as number
+  if(volume>0){
+    startTerminal();
+
+  }
 }
 async function upVolume() {
   let volume = GlobalState.get("playerVolume") as number
   if (volume < 100) {
-    if (volume < 10) {
-      volume = 0;
+   
+      volume += 5;
 
-    }
-    volume += 10;
-    GlobalState?.update("playerVolume", volume)
+     
 
-    refreshVolumeText()
 
   }
 
   GlobalState?.update("playerVolume", volume)
+  refreshVolumeText()
 
   if (playingState) {
     restartStream()
@@ -155,12 +157,9 @@ async function downVolume() {
   if (volume > 0) {
 
 
-    if (volume <= 10) {
-      volume -= 1;
-
-    } else {
-      volume -= 10;
-    }
+   
+      volume -= 5;
+    
 
 
   }
