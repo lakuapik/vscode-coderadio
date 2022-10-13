@@ -54,7 +54,7 @@ async function startTerminal()
       hideFromUser: true
     })
   }
-  terminal.sendText(`"${getPlayer()}" ${radio} --intf dummy --no-volume-save --gain ${volume / 2000} --volume-step ${volume / 256}`);
+  terminal.sendText(`"${getPlayer()}" ${radio} --intf dummy --no-volume-save --gain ${volume / 100} --volume-step ${volume / 128}`);
  
 
 
