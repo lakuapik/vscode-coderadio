@@ -33,7 +33,7 @@ function getPlayer(): ChildProcess {
   
   else{
     if(p && !p.connected && !p.killed){
-      p.kill("SIGKILL")
+      if(!isWin)spawn("kill",['-9',p.pid.toString()])
     }
     let vlc_path = [];
 
@@ -54,7 +54,7 @@ function getPlayer(): ChildProcess {
       throw `Cannot find vlc path`;
   
     let player = spawn.bind(null, vlc).apply(null, [[radio, "--gain", (volume / 100).toString(), "--volume-step", (volume / 128).toString()], {}]);
-
+    
     GlobalState.update("player", player)
     return player
   }
@@ -78,7 +78,13 @@ async function startTerminal() {
 function stopTerminal() {
  
   tmpPlayer?.kill("SIGKILL")
- 
+  let p = GlobalState.get("player") as ChildProcess
+  if(tmpPlayer)    tmpPlayer.kill("SIGKILL")
+  else if(p && !p.connected && !p.killed){
+      if(!isWin)spawn("kill",['-9',p.pid.toString()])
+      tmpPlayer=p
+    }
+    
   GlobalState.update("player", tmpPlayer)
 
 
@@ -103,7 +109,7 @@ async function restartStream() {
   startTerminal();
 }
 async function upVolume() {
-
+  volume = GlobalState.get("volume") as number
   if (volume < 100) {
     volume += 10;
     refreshVolumeText()
@@ -116,7 +122,7 @@ async function upVolume() {
 
 }
 async function downVolume() {
-
+  volume = GlobalState.get("volume") as number
   if (volume > 0) {
     volume -= 10;
     refreshVolumeText()
@@ -173,12 +179,12 @@ export function activate(context: vscode.ExtensionContext) {
   //get global state player
   GlobalState = context.globalState
   let p = GlobalState.get("player")
-  if (p) {
+  if (p ) {
   
     volume = GlobalState.get("playerVolume") as number
     updateSidebar("◼", "◼ Stop playing", "coderadio.stop");
 
-  }{
+  }else{
     updateSidebar("▶", "▶ Start playing", "coderadio.play");
 
   }
