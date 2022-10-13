@@ -2,10 +2,16 @@
   "name": "coderadio",
   "displayName": "Code Radio",
   "description": "Listen 24/7 music designed for coding",
-  "keywords": ["coderadio", "freecodecamp", "radio", "streaming", "music"],
+  "keywords": [
+    "coderadio",
+    "freecodecamp",
+    "radio",
+    "streaming",
+    "music"
+  ],
   "publisher": "lakuapik",
   "icon": "icon.png",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "MIT",
   "engines": {
     "vscode": "^1.50.0"
@@ -20,6 +26,9 @@
   ],
   "activationEvents": [
     "*"
+  ],
+  "extensionKind": [
+    "ui"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -43,7 +52,6 @@
       }
     }
   },
-
   "scripts": {
     "compile": "tsc -p ./",
     "lint": "eslint src --ext ts",
@@ -52,10 +60,11 @@
   },
   "devDependencies": {
     "@types/node": "^12.11.7",
-    "@types/vscode": "^1.50.0",
+    "@types/vscode": "^1.50",
     "@typescript-eslint/eslint-plugin": "^4.1.1",
     "@typescript-eslint/parser": "^4.1.1",
     "eslint": "^7.9.0",
     "typescript": "^4.0.2"
-  }
+  },
+  "dependencies": {}
 }
