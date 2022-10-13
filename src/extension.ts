@@ -1,21 +1,27 @@
-import { platform as osPlatform } from 'os';
 import { get as fetch } from 'https';
 import * as vscode from "vscode";
-import { ChildProcess, ChildProcessWithoutNullStreams, spawn, SpawnOptions } from 'child_process';
+import { ChildProcess,  spawn,  } from 'child_process';
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { kill } from 'process';
 
 const isWin = (process.platform == 'win32');
 let statusBar: vscode.StatusBarItem;
 let volumeValue: vscode.StatusBarItem;
 
 let GlobalState: vscode.Memento;
-let task: vscode.Task;
-let terminal: vscode.Terminal;
-let playingState = false;
-let platform: string = osPlatform()
-let tmpPlayer: ChildProcess;
+let localState:{
+  player:ChildProcess|null,
+  playerVolume:number,
+  playerState:boolean
+} = {
+  player : null,
+  playerVolume:20,
+  playerState:false
+}
+
+ 
 const radio = "https://coderadio-admin.freecodecamp.org/radio/8010/radio.mp3";
 const portal = "https://detectportal.firefox.com/success.txt";
 
@@ -33,7 +39,8 @@ function killProcess(pid: number) {
 
 function getPlayer(): ChildProcess {
   let p = GlobalState.get("player") as ChildProcess
-  if (p && p.connected && !p.killed) return p as ChildProcess;
+  if (p && p.connected && !p.killed) 
+    return p as ChildProcess;
 
   else {
     if (p && !p.connected && !p.killed) {
@@ -75,21 +82,43 @@ function getPlayer(): ChildProcess {
     }
     let player = spawn.bind(null, vlc).apply(null, [args, {}]);
 
-    GlobalState.update("player", player)
     return player
   }
 
 }
 
-function updateSidebar(text: string, tooltip: string, command: string) {
-  statusBar.text = text;
-  statusBar.tooltip = tooltip;
-  statusBar.command = command;
-  statusBar.show();
+function refreshPlayerState() {
+   
+  if( localState.playerState){
+
+    statusBar.text = "◼";
+    statusBar.tooltip = "◼ Stop playing";
+    statusBar.command = "coderadio.stop";
+  
+  }else{
+
+    statusBar.text = "▶";
+    statusBar.tooltip = "▶ Start playing";
+    statusBar.command = "coderadio.play";
+  } 
+}
+function refreshVolumeState() {
+  let volume = GlobalState.get("playerVolume") as number
+  volumeValue.text = volume + "% 🕨"
+  localState.playerVolume=volume
 }
 
 async function startTerminal() {
-  tmpPlayer = getPlayer()
+  if (!(await hasConnection())) {
+    vscode.window.showInformationMessage("Can't play, no internet connection.");
+    return;
+  }
+  localState.playerState = true
+  localState.player = getPlayer()
+
+  GlobalState.update("player", localState.player)
+
+  GlobalState.update("playerState", localState.playerState)
 
 
 
@@ -97,95 +126,125 @@ async function startTerminal() {
 
 function stopTerminal() {
 
-  let p = GlobalState.get("player") as ChildProcess
-  if (tmpPlayer) tmpPlayer.kill("SIGKILL")
-  else if (p && !p.connected && !p.killed) {
-    killProcess(p.pid)
-
-    tmpPlayer = p
+  let p = GlobalState.get("player") as ChildProcess 
+   
+  killProcess(p.pid)
+  if(localState.player && localState.player?.pid !== p.pid){
+    killProcess(localState.player!.pid)
   }
+  localState.playerState = false
+  localState.player = p 
+  GlobalState.update("player", localState.player)
 
-  GlobalState.update("player", tmpPlayer)
-
-
+  GlobalState.update("playerState", localState.playerState)
 }
+async function listenerHandler(){
+   
+    setTimeout(()=>{
+      let volume = GlobalState.get("playerVolume")
+      if(volume != localState.playerVolume){
+        refreshVolumeState()
+      }
+      let player = GlobalState.get("player") as ChildProcess
+      let playerState =  GlobalState.get("playerState");
+      if(player && localState.player!== null && player.pid != localState.player.pid){
+          killProcess(localState.player.pid)
+          localState.player = player;
+          refreshPlayerState();
+      }else if(playerState!= localState.playerState){
+        localState.playerState =   playerState as boolean;
+        refreshPlayerState();
 
+      }
+
+      listenerHandler()
+    },100)
+ 
+   
+}
 async function playStream() {
   if (!(await hasConnection())) {
     vscode.window.showInformationMessage("Can't play, no internet connection.");
     return;
   }
-  updateSidebar("◼", "◼ Stop playing", "coderadio.stop");
-  playingState = true;
-  startTerminal();
+  await startTerminal();
+  refreshPlayerState() 
+
 }
 
 async function restartStream() {
   stopTerminal();
-  if (!(await hasConnection())) {
-    vscode.window.showInformationMessage("Can't play, no internet connection.");
-    return;
-  }
+  
   let volume = GlobalState.get("playerVolume") as number
   if(volume>0){
-    startTerminal();
-
+    await startTerminal();
   }
 }
+
+//subscription functions
+
+async function stopStream() {
+ 
+
+  stopTerminal();
+  refreshPlayerState() 
+
+}
+
 async function upVolume() {
   let volume = GlobalState.get("playerVolume") as number
   if (volume < 100) {
-   
       volume += 5;
-
-     
-
 
   }
 
   GlobalState?.update("playerVolume", volume)
-  refreshVolumeText()
-
-  if (playingState) {
-    restartStream()
+  refreshVolumeState()
+  if (localState.playerState) {
+    await restartStream()
   }
 
 }
 async function downVolume() {
   let volume = GlobalState.get("playerVolume") as number
 
-  if (volume > 0) {
-
-
-   
-      volume -= 5;
-    
-
-
-  }
-  if (playingState) {
-    restartStream()
-
-
+  if (volume > 0) {  
+      volume -= 5;  
   }
   GlobalState?.update("playerVolume", volume)
 
-  refreshVolumeText()
+  refreshVolumeState()
 
+  if (localState.playerState) {
+    await restartStream()
+
+
+  }
 
 }
 
 
-async function stopStream() {
-  updateSidebar("▶", "▶ Start playing", "coderadio.play");
-  playingState = false;
-
-
-  stopTerminal();
-}
-
+//extension lifecycle functions
 export function activate(context: vscode.ExtensionContext) {
 
+
+  //get global state player
+  GlobalState = context.globalState 
+  context.globalState.setKeysForSync(["player","playerVolume,playerState"])
+
+  let p = GlobalState.get("player") as ChildProcess
+  if (p) {
+
+    let volume = GlobalState.get("playerVolume") as number
+    if (!volume) {
+      GlobalState?.update("playerVolume", 20)
+
+    }
+     
+
+  }  
+
+  listenerHandler()
 
   statusBar = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Left,
@@ -197,6 +256,8 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.StatusBarAlignment.Left,
     Number.MIN_SAFE_INTEGER
   );
+  let { volumeUp, volumeDown } = initVolumeButtons()
+
 
   radioName.text = "Code Radio"
 
@@ -214,35 +275,18 @@ export function activate(context: vscode.ExtensionContext) {
 
 
   radioName.show()
+ 
+  refreshPlayerState()
+  refreshVolumeState()
 
-  //get global state player
-  GlobalState = context.globalState
-  let p = GlobalState.get("player") as ChildProcess
-  if (p) {
+  statusBar.show();
 
-    let volume = GlobalState.get("playerVolume") as number
-    if (!volume) {
-      GlobalState?.update("playerVolume", 20)
-
-    }
-    if (!p.killed) {
-      updateSidebar("◼", "◼ Stop playing", "coderadio.stop");
-
-    } else {
-      updateSidebar("▶", "▶ Start playing", "coderadio.play");
-
-    }
-
-  } else {
-    updateSidebar("▶", "▶ Start playing", "coderadio.play");
-
-  }
-  let { volumeUp, volumeDown } = initVolumeButtons()
 
   volumeUp.show()
 
   volumeDown.show()
   volumeValue.show()
+  
 }
 
 function initVolumeButtons() {
@@ -266,14 +310,11 @@ function initVolumeButtons() {
     vscode.StatusBarAlignment.Left,
     Number.MIN_SAFE_INTEGER
   );
-  refreshVolumeText()
   return { volumeUp, volumeDown }
 }
 
-function refreshVolumeText() {
-  let volume = GlobalState.get("playerVolume")
-  volumeValue.text = volume + "% 🕨"
-}
+
+ 
 
 export function deactivate() {
   stopStream();
