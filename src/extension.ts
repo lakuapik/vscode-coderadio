@@ -39,8 +39,10 @@ function getPlayer(): ChildProcess {
     if (p && !p.connected && !p.killed) {
       killProcess(p.pid)
     }
-    let vlc_path = [];
-
+    let vlc_path_str = vscode.workspace.getConfiguration("coderadio").get("vlc_path") as string
+    let vlc_path=[]
+    if(!vlc_path_str){
+      vlc_path =[]
     //we can do better, but this is kindof okay
 
     if (isWin && process.env['ProgramFiles'])
@@ -51,6 +53,9 @@ function getPlayer(): ChildProcess {
 
     if (!isWin)
       vlc_path.push("/usr/bin/cvlc");
+  }else{
+    vlc_path=[vlc_path_str]
+  }
 
     let vlc = vlc_path.find(bin => fs.existsSync(bin));
 

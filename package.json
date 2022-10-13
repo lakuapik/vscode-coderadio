@@ -27,8 +27,10 @@
   "activationEvents": [
     "*"
   ],
-  "extensionKind": ["ui"],
-    "main": "./out/extension.js",
+  "extensionKind": [
+    "ui"
+  ],
+  "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
@@ -62,8 +64,7 @@
     "@typescript-eslint/eslint-plugin": "^4.1.1",
     "@typescript-eslint/parser": "^4.1.1",
     "eslint": "^7.9.0",
-    "typescript": "^4.0.2",
-    "vlc-player": "^2.0.0"
+    "typescript": "^4.0.2"
   },
   "dependencies": {}
 }
